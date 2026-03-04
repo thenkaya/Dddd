@@ -1,0 +1,1201 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Огонёк</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    :root{
+      --bg: #0b0f14;
+      --card: rgba(255,255,255,.06);
+      --card2: rgba(255,255,255,.04);
+      --stroke: rgba(255,255,255,.10);
+      --text: #e9eef7;
+      --muted: rgba(233,238,247,.72);
+      --accent: #6aa7ff;
+      --accent2:#ff7a45;
+      --good:#22c55e;
+      --warn:#f59e0b;
+      --bad:#ef4444;
+      --shadow: 0 18px 40px rgba(0,0,0,.35);
+      --radius: 20px;
+      --radius2: 26px;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color-scheme: dark;
+    }
+    [data-theme="light"]{
+      --bg:#f6f8fb;
+      --card: rgba(0,0,0,.05);
+      --card2: rgba(0,0,0,.03);
+      --stroke: rgba(0,0,0,.10);
+      --text:#101828;
+      --muted: rgba(16,24,40,.68);
+      --accent:#2a78ff;
+      --accent2:#ff5d2a;
+      --shadow: 0 18px 40px rgba(16,24,40,.12);
+      color-scheme: light;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      background: radial-gradient(900px 600px at 50% -10%, rgba(106,167,255,.18), transparent 55%),
+                  radial-gradient(900px 600px at 18% 10%, rgba(255,122,69,.14), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      overflow-x:hidden;
+    }
+    .app{
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 14px;
+      padding-bottom: 98px;
+    }
+
+    .header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      padding: 12px 12px;
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, var(--card), transparent);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .brand{ display:flex; flex-direction:column; gap: 2px; }
+    .brand b{ font-size: 18px; letter-spacing:.2px; }
+    .brand span{ font-size: 12px; color: var(--muted); }
+    .chipRow{ display:flex; gap: 8px; flex-wrap:wrap; justify-content:flex-end; }
+    .chip{
+      display:flex; align-items:center; gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--stroke);
+      background: var(--card2);
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+      user-select:none;
+      white-space:nowrap;
+    }
+    .chip b{ color: var(--text); font-weight:700; }
+
+    .card{
+      margin-top: 12px;
+      border: 1px solid var(--stroke);
+      border-radius: var(--radius2);
+      background: linear-gradient(180deg, var(--card), transparent 70%);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow:hidden;
+    }
+    .cardInner{ padding: 14px; }
+
+    .scene{
+      border: 1px solid var(--stroke);
+      border-radius: 22px;
+      background:
+        radial-gradient(900px 520px at 50% -25%, rgba(255,184,0,.22), transparent 60%),
+        radial-gradient(600px 420px at 22% 18%, rgba(255,45,95,.12), transparent 55%),
+        radial-gradient(520px 380px at 80% 24%, rgba(106,167,255,.13), transparent 60%),
+        rgba(0,0,0,.10);
+      padding: 14px;
+      position: relative;
+      overflow:hidden;
+    }
+    [data-theme="light"] .scene{
+      background:
+        radial-gradient(900px 520px at 50% -25%, rgba(255,184,0,.18), transparent 60%),
+        radial-gradient(600px 420px at 22% 18%, rgba(255,45,95,.09), transparent 55%),
+        radial-gradient(520px 380px at 80% 24%, rgba(42,120,255,.12), transparent 60%),
+        rgba(255,255,255,.35);
+    }
+
+    /* --- flame area --- */
+    .flameWrap{
+      display:flex; align-items:center; justify-content:center;
+      padding: 14px 0 4px;
+      position: relative;
+    }
+
+    .flame{
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      position: relative;
+      transform: scale(1);
+      transition: transform .12s ease, opacity .2s ease, filter .2s ease;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      cursor:pointer;
+      filter: drop-shadow(0 0 30px rgba(255,120,40,.28));
+      isolation: isolate;
+    }
+    .flame.locked{ opacity: .45; cursor:not-allowed; filter: drop-shadow(0 0 12px rgba(148,163,184,.18)); }
+
+    /* core visual layers */
+    .flame .core{
+      position:absolute; inset: 0;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 34%, rgba(255,250,210,.98), rgba(255,180,70,.70) 46%, rgba(255,80,60,.28) 74%, rgba(0,0,0,0) 76%);
+      animation: breathe 2.6s ease-in-out infinite;
+      z-index: 3;
+    }
+    .flame .inner{
+      position:absolute; inset: 28px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 38%, rgba(255,255,255,.88), rgba(255,240,160,.58) 55%, rgba(255,160,70,.16) 78%, rgba(0,0,0,0) 80%);
+      transform: translateY(10px);
+      opacity:.92;
+      animation: breathe2 2.0s ease-in-out infinite;
+      z-index: 4;
+      mix-blend-mode: screen;
+    }
+
+    /* plasma overlay (gives “alive” look) */
+    .flame .plasma{
+      position:absolute; inset:-18px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.20), transparent 45%),
+        radial-gradient(circle at 70% 40%, rgba(255,255,255,.14), transparent 42%),
+        radial-gradient(circle at 45% 70%, rgba(255,255,255,.10), transparent 46%);
+      filter: blur(10px);
+      opacity: .65;
+      animation: drift 3.8s ease-in-out infinite;
+      z-index: 2;
+      mix-blend-mode: screen;
+      pointer-events:none;
+    }
+
+    /* effects container */
+    .fx{
+      position:absolute;
+      inset:-40px;
+      pointer-events:none;
+      z-index: 1;
+    }
+
+    /* aura */
+    .aura{
+      position:absolute; inset: 10px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 50%,
+          rgba(106,167,255,.00) 44%,
+          rgba(106,167,255,.18) 58%,
+          rgba(255,122,69,.10) 68%,
+          rgba(0,0,0,0) 75%);
+      filter: blur(8px);
+      opacity: .0;
+      transform: scale(.98);
+    }
+    .fx.on-aura .aura{ opacity: 1; animation: auraPulse 2.2s ease-in-out infinite; }
+
+    /* ring */
+    .ring{
+      position:absolute;
+      left: 50%; top: 52%;
+      width: 230px; height: 230px;
+      transform: translate(-50%,-50%) rotate(0deg);
+      border-radius: 50%;
+      border: 1px solid rgba(106,167,255,.25);
+      opacity: 0;
+      filter: blur(.2px);
+    }
+    .fx.on-ring .ring{ opacity: 1; animation: spin 6s linear infinite; }
+
+    /* sparks particles (CSS) */
+    .dust{
+      position:absolute; inset:0;
+      opacity: 0;
+    }
+    .fx.on-dust .dust{ opacity: 1; }
+
+    .dust i{
+      position:absolute;
+      width: 3px; height: 3px;
+      border-radius: 999px;
+      background: rgba(255,240,160,.95);
+      opacity: .0;
+      animation: floatUp 2.4s linear infinite;
+      filter: blur(.2px);
+    }
+    .fx.on-dust i:nth-child(odd){ background: rgba(106,167,255,.85); }
+    .fx.on-dust i:nth-child(3n){ background: rgba(255,122,69,.85); }
+
+    /* tap spark */
+    .tapSpark{
+      position:absolute;
+      width: 10px; height: 10px;
+      border-radius: 999px;
+      background: rgba(255,240,160,.98);
+      filter: blur(.2px);
+      opacity: 0;
+      left: 50%; top: 58%;
+      transform: translate(-50%,-50%);
+      z-index: 10;
+    }
+
+    @keyframes breathe{ 0%,100%{ transform: scale(1);} 50%{ transform: scale(1.035);} }
+    @keyframes breathe2{ 0%,100%{ transform: translateY(10px) scale(1);} 50%{ transform: translateY(7px) scale(1.06);} }
+    @keyframes drift{ 0%,100%{ transform: translate(0px,0px) scale(1);} 50%{ transform: translate(10px,-8px) scale(1.02);} }
+    @keyframes auraPulse{ 0%,100%{ transform: scale(.98); opacity:.85;} 50%{ transform: scale(1.03); opacity:1;} }
+    @keyframes spin{ from{ transform: translate(-50%,-50%) rotate(0deg);} to{ transform: translate(-50%,-50%) rotate(360deg);} }
+    @keyframes floatUp{
+      0%{ transform: translateY(0px); opacity:0; }
+      10%{ opacity:.8; }
+      100%{ transform: translateY(-110px); opacity:0; }
+    }
+
+    /* meters */
+    .meters{ margin-top: 12px; display:grid; gap: 10px; }
+    .meterRow{ display:grid; gap: 6px; }
+    .meterTop{ display:flex; align-items:center; justify-content:space-between; font-size: 12px; color: var(--muted); }
+    .meter{
+      height: 12px;
+      background: rgba(0,0,0,.20);
+      border: 1px solid var(--stroke);
+      border-radius: 999px;
+      overflow:hidden;
+    }
+    [data-theme="light"] .meter{ background: rgba(0,0,0,.06); }
+    .bar{ height:100%; width:0%; }
+    .bar.xp{ background: linear-gradient(90deg, #ffb800, #ff5d2a, #ff2a6d); }
+    .bar.energy{ background: linear-gradient(90deg, #22c55e, #2a78ff); }
+    .bar.mood{ background: linear-gradient(90deg, #22c55e, #f59e0b, #ef4444); }
+
+    /* stats */
+    .stats{
+      margin-top: 12px;
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+    .stat{
+      border: 1px solid var(--stroke);
+      background: var(--card2);
+      border-radius: 18px;
+      padding: 10px 12px;
+      min-height: 58px;
+    }
+    .stat .k{ font-size: 12px; color: var(--muted); }
+    .stat .v{ margin-top: 4px; font-size: 16px; font-weight:800; }
+    .stat .s{ margin-top: 2px; font-size: 12px; color: var(--muted); }
+
+    /* actions */
+    .actions{
+      margin-top: 12px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    button.btn{
+      display:flex; align-items:center; justify-content:space-between;
+      gap: 10px;
+      padding: 12px 12px;
+      border-radius: 18px;
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, var(--card2), transparent);
+      color: var(--text);
+      cursor:pointer;
+      user-select:none;
+      transition: transform .08s ease, opacity .2s ease;
+    }
+    button.btn:active{ transform: translateY(1px); }
+    button.btn:disabled{ opacity:.45; cursor:not-allowed; }
+    .btn .left{ display:flex; flex-direction:column; gap:2px; text-align:left; }
+    .btn .t{ font-weight:900; }
+    .btn .d{ font-size:12px; color: var(--muted); }
+    .btn .tag{
+      font-size: 12px;
+      padding: 6px 8px;
+      border-radius: 999px;
+      background: rgba(106,167,255,.15);
+      border: 1px solid rgba(106,167,255,.18);
+      color: var(--text);
+      white-space:nowrap;
+    }
+    [data-theme="light"] .btn .tag{
+      background: rgba(42,120,255,.10);
+      border: 1px solid rgba(42,120,255,.18);
+    }
+
+    /* shop */
+    .shopGrid{
+      margin-top: 10px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .shopItem{
+      border: 1px solid var(--stroke);
+      background: linear-gradient(180deg, var(--card2), transparent);
+      border-radius: 18px;
+      padding: 12px;
+      display:flex;
+      flex-direction:column;
+      gap: 8px;
+    }
+    .shopItem .name{ font-weight:900; }
+    .shopItem .desc{ font-size: 12px; color: var(--muted); line-height: 1.25; }
+    .shopItem .row{
+      display:flex; align-items:center; justify-content:space-between; gap: 10px;
+    }
+    .badge{
+      font-size: 12px;
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: var(--card2);
+      color: var(--muted);
+      white-space:nowrap;
+    }
+    .primaryBtn{
+      border: 1px solid rgba(106,167,255,.28);
+      background: rgba(106,167,255,.14);
+      color: var(--text);
+      padding: 10px 10px;
+      border-radius: 14px;
+      cursor:pointer;
+      font-weight:800;
+    }
+    [data-theme="light"] .primaryBtn{
+      border: 1px solid rgba(42,120,255,.25);
+      background: rgba(42,120,255,.10);
+    }
+    .primaryBtn:disabled{ opacity:.45; cursor:not-allowed; }
+
+    /* bottom nav */
+    .nav{
+      position: fixed;
+      left: 50%;
+      bottom: 10px;
+      transform: translateX(-50%);
+      width: min(560px, calc(100vw - 18px));
+      background: rgba(15,22,34,.72);
+      border: 1px solid var(--stroke);
+      border-radius: 22px;
+      padding: 8px;
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      z-index: 9999;
+    }
+    [data-theme="light"] .nav{ background: rgba(255,255,255,.70); }
+
+    .navBtn{
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 16px;
+      padding: 10px 10px;
+      font-size: 13px;
+      cursor:pointer;
+    }
+    .navBtn.active{
+      color: var(--text);
+      background: var(--card);
+      border-color: var(--stroke);
+    }
+
+    .hint{ margin-top: 10px; color: var(--muted); font-size: 12px; line-height: 1.35; }
+
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: 102px;
+      transform: translateX(-50%);
+      background: rgba(15,22,34,.92);
+      border: 1px solid var(--stroke);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      max-width: min(520px, calc(100vw - 24px));
+      text-align: center;
+      z-index: 10000;
+    }
+    [data-theme="light"] .toast{ background: rgba(255,255,255,.92); }
+    .toast.show{ opacity: 1; transform: translateX(-50%) translateY(-6px); }
+
+    .page{ display:none; }
+    .page.active{ display:block; }
+
+    .settingsRow{
+      display:flex; gap:10px; flex-wrap:wrap;
+      margin-top: 10px;
+    }
+    .miniBtn{
+      border: 1px solid var(--stroke);
+      background: var(--card2);
+      color: var(--text);
+      border-radius: 16px;
+      padding: 10px 12px;
+      cursor:pointer;
+      user-select:none;
+      font-size: 13px;
+    }
+    .miniBtn.danger{ background: rgba(229,72,77,.16); border-color: rgba(229,72,77,.28); }
+
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+</head>
+
+<body data-theme="dark">
+  <div class="app">
+    <div class="header">
+      <div class="brand">
+        <b>🔥 Огонёк</b>
+        <span id="subtitle">магазин • эффекты • автосейв</span>
+      </div>
+      <div class="chipRow">
+        <div class="chip">Уровень: <b id="lvlChip">1</b></div>
+        <div class="chip">Искры: <b id="sparksChip">0</b> ✨</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="cardInner">
+
+        <!-- HOME -->
+        <div class="page active" id="pageHome">
+          <div class="scene">
+            <div class="flameWrap">
+              <div class="flame" id="flame" role="button" aria-label="Тап по огоньку">
+                <div class="fx" id="fx">
+                  <div class="aura"></div>
+                  <div class="ring"></div>
+                  <div class="dust" id="dust"></div>
+                </div>
+
+                <div class="plasma"></div>
+                <div class="core"></div>
+                <div class="inner"></div>
+
+                <div class="tapSpark" id="tapSpark"></div>
+              </div>
+            </div>
+            <div class="hint" id="tapHint">Тап = +XP (⚡-1), есть кулдаун и прогрессия.</div>
+
+            <div class="meters">
+              <div class="meterRow">
+                <div class="meterTop"><span>Опыт</span><span id="xpText">0 / 100</span></div>
+                <div class="meter"><div class="bar xp" id="xpBar"></div></div>
+              </div>
+
+              <div class="meterRow">
+                <div class="meterTop"><span>Энергия</span><span id="energyText">20 / 20</span></div>
+                <div class="meter"><div class="bar energy" id="energyBar"></div></div>
+              </div>
+
+              <div class="meterRow">
+                <div class="meterTop"><span>Настроение</span><span id="moodTextTop">😄 100%</span></div>
+                <div class="meter"><div class="bar mood" id="moodBar"></div></div>
+              </div>
+            </div>
+
+            <div class="stats">
+              <div class="stat">
+                <div class="k">Эффект</div>
+                <div class="v" id="fxName">—</div>
+                <div class="s" id="fxSub">выбран в магазине</div>
+              </div>
+              <div class="stat">
+                <div class="k">Скин (цвет)</div>
+                <div class="v" id="skinText">Тёплый</div>
+                <div class="s" id="skinSub">меняется с уровнем</div>
+              </div>
+              <div class="stat">
+                <div class="k">Награда</div>
+                <div class="v" id="nextReward">10 lvl</div>
+                <div class="s" id="rewardSub">следующая цель</div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="btn" id="btnFeed">
+                <div class="left"><div class="t">🍞 Кормить</div><div class="d">+XP, +настроение</div></div>
+                <div class="tag" id="tagFeed">-3 ⚡</div>
+              </button>
+
+              <button class="btn" id="btnPet">
+                <div class="left"><div class="t">🖐️ Гладить</div><div class="d">+XP, лучше настроение</div></div>
+                <div class="tag" id="tagPet">-2 ⚡</div>
+              </button>
+
+              <button class="btn" id="btnPlay">
+                <div class="left"><div class="t">🎲 Играть</div><div class="d">+XP, чуть настроение</div></div>
+                <div class="tag" id="tagPlay">-3 ⚡</div>
+              </button>
+
+              <button class="btn" id="btnDaily">
+                <div class="left"><div class="t">🎁 Ежедневный бонус</div><div class="d">раз в день</div></div>
+                <div class="tag" id="tagDaily">+✨</div>
+              </button>
+            </div>
+
+            <div class="hint" id="tgInfo">Открыто в браузере</div>
+          </div>
+        </div>
+
+        <!-- SHOP -->
+        <div class="page" id="pageShop">
+          <div class="scene">
+            <b style="display:block; font-size:16px; margin-bottom:6px;">🛒 Магазин эффектов</b>
+            <div class="hint">
+              Покупай эффекты за Искры ✨ и выбирай активный. Всё сохраняется.
+            </div>
+
+            <div class="shopGrid" id="shopGrid"></div>
+
+            <div class="hint" style="margin-top:10px;">
+              Совет: Искры выдаются за ежедневку и каждые 10 уровней.
+            </div>
+          </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div class="page" id="pageSettings">
+          <div class="scene">
+            <b style="display:block; font-size:16px; margin-bottom:6px;">⚙️ Настройки</b>
+            <div class="hint">Тема, музыка, автосейв и сервис.</div>
+
+            <div class="settingsRow">
+              <button class="miniBtn" id="toggleTheme">🌗 Тема: авто</button>
+              <button class="miniBtn" id="toggleMusic">🎵 Музыка: выкл</button>
+              <button class="miniBtn" id="musicVol">🔊 Громкость: 40%</button>
+              <button class="miniBtn" id="toggleAutosave">💾 Автосейв: вкл</button>
+            </div>
+
+            <div class="settingsRow">
+              <button class="miniBtn" id="manualSave">💾 Сохранить сейчас</button>
+              <button class="miniBtn danger" id="reset">🧨 Сбросить прогресс</button>
+            </div>
+
+            <div class="hint">
+              Музыка генерируется в браузере. В Telegram звук может включиться только после нажатия (это ограничение браузера).
+            </div>
+          </div>
+        </div>
+
+        <!-- ABOUT -->
+        <div class="page" id="pageAbout">
+          <div class="scene">
+            <b style="display:block; font-size:16px; margin-bottom:6px;">📜 Про игру</b>
+            <div class="hint">
+              • Уровни бесконечные. <br/>
+              • Прогрессия медленная: энергия, кулдауны, растущая цена уровня. <br/>
+              • Награды каждые 10 уровней: Искры ✨. <br/>
+              • Магазин: эффекты вокруг огонька. <br/>
+              • Автосейв хранит всё в <span class="mono">localStorage</span>. <br/>
+            </div>
+          </div
+
+        </div> <!-- /pageAbout .scene -->
+      </div> <!-- /pageAbout -->
+    </div> <!-- /cardInner -->
+  </div> <!-- /card -->
+</div> <!-- /app -->
+
+<!-- bottom nav -->
+<div class="nav" id="bottomNav">
+  <button class="navBtn active" data-go="home">🏠 Главная</button>
+  <button class="navBtn" data-go="shop">🛒 Магазин</button>
+  <button class="navBtn" data-go="settings">⚙️ Настройки</button>
+  <button class="navBtn" data-go="about">📜 Про</button>
+</div>
+
+<div class="toast" id="toast">—</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // --- Telegram WebApp safe init ---
+  const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+  try {
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+  } catch (_) {}
+
+  // --- Helpers ---
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const now = () => Date.now();
+
+  const toastEl = $("toast");
+  let toastTimer = null;
+  const toast = (msg, ms = 1400) => {
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), ms);
+  };
+
+  const haptic = (type = "light") => {
+    try {
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred(type);
+    } catch (_) {}
+  };
+
+  // --- State ---
+  const DEFAULT = {
+    lvl: 1,
+    xp: 0,
+    sparks: 0,
+    energy: 20,
+    energyMax: 20,
+    mood: 100,         // 0..100
+    lastDaily: 0,      // ms
+    lastTap: 0,        // ms
+    tapCooldown: 450,  // ms
+
+    ownedFx: ["none"],
+    activeFx: "none",
+
+    themePref: "auto", // auto|dark|light
+    musicOn: false,
+    musicVol: 0.40,    // 0..1
+    autosaveOn: true
+  };
+
+  const LS_KEY = "ogonek_v2_save";
+  const load = () => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return structuredClone(DEFAULT);
+      const obj = JSON.parse(raw);
+      return { ...structuredClone(DEFAULT), ...obj };
+    } catch (_) {
+      return structuredClone(DEFAULT);
+    }
+  };
+
+  const save = () => {
+    if (!S.autosaveOn) return;
+    try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (_) {}
+  };
+
+  let S = load();
+
+  // --- UI refs ---
+  const flame = $("flame");
+  const fx = $("fx");
+  const dust = $("dust");
+  const tapSpark = $("tapSpark");
+
+  const xpBar = $("xpBar");
+  const xpText = $("xpText");
+  const lvlChip = $("lvlChip");
+  const sparksChip = $("sparksChip");
+
+  const energyBar = $("energyBar");
+  const energyText = $("energyText");
+
+  const moodBar = $("moodBar");
+  const moodTextTop = $("moodTextTop");
+
+  const fxName = $("fxName");
+  const skinText = $("skinText");
+  const nextReward = $("nextReward");
+
+  const btnFeed = $("btnFeed");
+  const btnPet = $("btnPet");
+  const btnPlay = $("btnPlay");
+  const btnDaily = $("btnDaily");
+
+  const shopGrid = $("shopGrid");
+
+  const toggleTheme = $("toggleTheme");
+  const toggleMusic = $("toggleMusic");
+  const musicVolBtn = $("musicVol");
+  const toggleAutosave = $("toggleAutosave");
+  const manualSave = $("manualSave");
+  const resetBtn = $("reset");
+
+  const tgInfo = $("tgInfo");
+
+  // --- Derived mechanics ---
+  const xpNeed = (lvl) => Math.floor(90 + lvl * 22 + Math.pow(lvl, 1.15) * 6); // grows slowly, endless
+  const energyRegenPerMin = 1; // +1 per minute
+  const moodRegenPerMin = 0.6;
+
+  // --- Effects shop ---
+  const FX = [
+    { id: "none",  name: "—",       desc: "без эффекта",                 price: 0,   cls: "" },
+    { id: "aura",  name: "Аура",    desc: "мягкое сияние вокруг огонька", price: 20,  cls: "on-aura" },
+    { id: "ring",  name: "Кольцо",  desc: "вращающееся кольцо энергии",   price: 35,  cls: "on-ring" },
+    { id: "dust",  name: "Искры",   desc: "частицы поднимаются вверх",    price: 45,  cls: "on-dust" },
+    { id: "full",  name: "Комбо",   desc: "аура + кольцо + искры",        price: 70,  cls: "on-aura on-ring on-dust" }
+  ];
+
+  const fxById = (id) => FX.find(x => x.id === id) || FX[0];
+
+  // --- Music (WebAudio, starts on user gesture) ---
+  let audioCtx = null, master = null, osc = null, lfo = null, lfoGain = null;
+
+  const ensureAudio = () => {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    master = audioCtx.createGain();
+    master.gain.value = S.musicVol;
+    master.connect(audioCtx.destination);
+
+    // Main oscillator (simple warm loop)
+    osc = audioCtx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = 220;
+
+    // LFO for gentle wobble
+    lfo = audioCtx.createOscillator();
+    lfo.type = "sine";
+    lfo.frequency.value = 0.25;
+
+    lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = 18;
+
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc.frequency);
+
+    const oscGain = audioCtx.createGain();
+    oscGain.gain.value = 0.12;
+
+    osc.connect(oscGain);
+    oscGain.connect(master);
+
+    lfo.start();
+    osc.start();
+  };
+
+  const setMusic = async (on) => {
+    S.musicOn = !!on;
+    if (!S.musicOn) {
+      if (master) master.gain.value = 0;
+      renderSettings();
+      save();
+      return;
+    }
+    try {
+      ensureAudio();
+      if (audioCtx && audioCtx.state === "suspended") await audioCtx.resume();
+      master.gain.value = S.musicVol;
+    } catch (_) {
+      toast("Звук заблокирован. Нажми ещё раз.");
+      S.musicOn = false;
+    }
+    renderSettings();
+    save();
+  };
+
+  const setVol = (v) => {
+    S.musicVol = clamp(v, 0, 1);
+    if (master && S.musicOn) master.gain.value = S.musicVol;
+    renderSettings();
+    save();
+  };
+
+  // --- Particles (dust) ---
+  const buildDust = () => {
+    if (!dust) return;
+    if (dust.childElementCount) return;
+    const n = 18;
+    for (let i = 0; i < n; i++) {
+      const p = document.createElement("i");
+      p.style.left = (8 + Math.random() * 84).toFixed(1) + "%";
+      p.style.top = (52 + Math.random() * 36).toFixed(1) + "%";
+      p.style.animationDelay = (-Math.random() * 2.4).toFixed(2) + "s";
+      p.style.animationDuration = (1.8 + Math.random() * 1.6).toFixed(2) + "s";
+      dust.appendChild(p);
+    }
+  };
+
+  // --- Pages nav ---
+  const pages = {
+    home: $("pageHome"),
+    shop: $("pageShop"),
+    settings: $("pageSettings"),
+    about: $("pageAbout")
+  };
+
+  const go = (name) => {
+    Object.entries(pages).forEach(([k, el]) => {
+      if (!el) return;
+      el.classList.toggle("active", k === name);
+    });
+    document.querySelectorAll(".navBtn").forEach(b => b.classList.toggle("active", b.dataset.go === name));
+    haptic("light");
+  };
+
+  // --- Theme ---
+  const applyTheme = () => {
+    const root = document.body;
+    const prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+    const theme = (S.themePref === "auto") ? (prefersLight ? "light" : "dark") : S.themePref;
+    root.setAttribute("data-theme", theme);
+  };
+
+  // --- Regen (based on time passed) ---
+  const applyOfflineRegen = () => {
+    const last = S.__lastTick || now();
+    const dtMin = (now() - last) / 60000;
+    if (dtMin <= 0) return;
+
+    S.energy = clamp(S.energy + dtMin * energyRegenPerMin, 0, S.energyMax);
+    S.mood = clamp(S.mood + dtMin * moodRegenPerMin, 0, 100);
+    S.__lastTick = now();
+  };
+
+  // --- Skin (color) ---
+  const skinNameByLvl = (lvl) => {
+    if (lvl < 10) return "Тёплый";
+    if (lvl < 25) return "Яркий";
+    if (lvl < 50) return "Синий";
+    if (lvl < 80) return "Фиолетовый";
+    return "Легендарный";
+  };
+
+  const skinFilterByLvl = (lvl) => {
+    if (lvl < 10) return "none";
+    if (lvl < 25) return "hue-rotate(12deg) saturate(1.15)";
+    if (lvl < 50) return "hue-rotate(200deg) saturate(1.10)";
+    if (lvl < 80) return "hue-rotate(260deg) saturate(1.25)";
+    return "hue-rotate(300deg) saturate(1.45) brightness(1.08)";
+  };
+
+  // --- XP + Level ---
+  const awardSparksForLevel = (lvl) => {
+    // every 10 levels: +10 sparks
+    if (lvl % 10 === 0) return 10;
+    return 0;
+  };
+
+  const levelUpIfNeeded = () => {
+    let need = xpNeed(S.lvl);
+    let leveled = false;
+    while (S.xp >= need) {
+      S.xp -= need;
+      S.lvl += 1;
+      leveled = true;
+      const reward = awardSparksForLevel(S.lvl);
+      if (reward) {
+        S.sparks += reward;
+        toast(`Награда: +${reward} ✨ (ур. ${S.lvl})`);
+      } else {
+        toast(`Уровень ${S.lvl}!`);
+      }
+      need = xpNeed(S.lvl);
+    }
+    return leveled;
+  };
+
+  // --- Actions ---
+  const canSpendEnergy = (cost) => S.energy >= cost;
+
+  const spendEnergy = (cost) => {
+    S.energy = clamp(S.energy - cost, 0, S.energyMax);
+  };
+
+  const addXp = (amount) => {
+    S.xp += amount;
+    levelUpIfNeeded();
+  };
+
+  const addMood = (amount) => {
+    S.mood = clamp(S.mood + amount, 0, 100);
+  };
+
+  const tapFx = () => {
+    if (!tapSpark) return;
+    tapSpark.style.opacity = "1";
+    tapSpark.animate([{ transform: "translate(-50%,-50%) scale(1)" }, { transform: "translate(-50%,-50%) scale(5)", opacity: 0 }],
+      { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)" }
+    );
+    setTimeout(() => tapSpark.style.opacity = "0", 220);
+  };
+
+  const doTap = () => {
+    applyOfflineRegen();
+    if (now() - S.lastTap < S.tapCooldown) return;
+    if (!canSpendEnergy(1)) { toast("Нет энергии ⚡"); haptic("light"); return; }
+    S.lastTap = now();
+    spendEnergy(1);
+    addXp(2);
+    addMood(0.3);
+    tapFx();
+    flame && (flame.style.transform = "scale(1.04)");
+    setTimeout(() => flame && (flame.style.transform = "scale(1)"), 90);
+    haptic("light");
+    render();
+    save();
+  };
+
+  const action = (name) => {
+    applyOfflineRegen();
+    if (name === "feed") {
+      const cost = 3;
+      if (!canSpendEnergy(cost)) return toast("Не хватает энергии ⚡");
+      spendEnergy(cost); addXp(10); addMood(5); toast("Огонёк доволен 🍞"); haptic("medium");
+    }
+    if (name === "pet") {
+      const cost = 2;
+      if (!canSpendEnergy(cost)) return toast("Не хватает энергии ⚡");
+      spendEnergy(cost); addXp(8); addMood(7); toast("Погладил 🖐️"); haptic("medium");
+    }
+    if (name === "play") {
+      const cost = 3;
+      if (!canSpendEnergy(cost)) return toast("Не хватает энергии ⚡");
+      spendEnergy(cost); addXp(12); addMood(3); toast("Поиграли 🎲"); haptic("medium");
+    }
+    if (name === "daily") {
+      const dayMs = 24 * 60 * 60 * 1000;
+      if (now() - S.lastDaily < dayMs) {
+        const leftH = Math.ceil((dayMs - (now() - S.lastDaily)) / 3600000);
+        return toast(`Ещё рано. Осталось ~${leftH}ч`);
+      }
+      S.lastDaily = now();
+      const reward = 15;
+      S.sparks += reward;
+      addMood(10);
+      toast(`Ежедневка: +${reward} ✨`);
+      haptic("heavy");
+    }
+    render();
+    save();
+  };
+
+  // --- Shop render & buy/select ---
+  const renderShop = () => {
+    if (!shopGrid) return;
+    shopGrid.innerHTML = "";
+    FX.forEach(item => {
+      if (item.id === "none") return; // hide "none" from grid, selection via "Комбо" and others, but allow reset by clicking active name
+      const owned = S.ownedFx.includes(item.id);
+      const active = S.activeFx === item.id;
+
+      const wrap = document.createElement("div");
+      wrap.className = "shopItem";
+
+      const top = document.createElement("div");
+      top.innerHTML = `<div class="name">✨ ${item.name}</div><div class="desc">${item.desc}</div>`;
+      wrap.appendChild(top);
+
+      const row = document.createElement("div");
+      row.className = "row";
+
+      const price = document.createElement("div");
+      price.className = "badge";
+      price.textContent = owned ? "куплено" : `${item.price} ✨`;
+      row.appendChild(price);
+
+      const btn = document.createElement("button");
+      btn.className = "primaryBtn";
+      btn.textContent = active ? "Активно" : (owned ? "Выбрать" : "Купить");
+      btn.disabled = active || (!owned && S.sparks < item.price);
+
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        applyOfflineRegen();
+        if (!owned) {
+          if (S.sparks < item.price) return toast("Не хватает искр ✨");
+          S.sparks -= item.price;
+          S.ownedFx = Array.from(new Set([...S.ownedFx, item.id]));
+          toast(`Куплено: ${item.name}`);
+          haptic("medium");
+        }
+        S.activeFx = item.id;
+        applyFx();
+        render();
+        renderShop();
+        save();
+      });
+
+      row.appendChild(btn);
+      wrap.appendChild(row);
+      shopGrid.appendChild(wrap);
+    });
+  };
+
+  const applyFx = () => {
+    if (!fx) return;
+    const it = fxById(S.activeFx);
+    fx.className = "fx " + (it.cls || "");
+    if (S.activeFx === "dust" || S.activeFx === "full") buildDust();
+    fxName && (fxName.textContent = it.name === "—" ? "—" : it.name);
+  };
+
+  // --- Settings UI ---
+  const renderSettings = () => {
+    if (toggleTheme) {
+      const map = { auto: "авто", dark: "тёмная", light: "светлая" };
+      toggleTheme.textContent = `🌗 Тема: ${map[S.themePref] || "авто"}`;
+    }
+    if (toggleMusic) toggleMusic.textContent = `🎵 Музыка: ${S.musicOn ? "вкл" : "выкл"}`;
+    if (musicVolBtn) musicVolBtn.textContent = `🔊 Громкость: ${Math.round(S.musicVol * 100)}%`;
+    if (toggleAutosave) toggleAutosave.textContent = `💾 Автосейв: ${S.autosaveOn ? "вкл" : "выкл"}`;
+  };
+
+  // --- Main render ---
+  const render = () => {
+    applyTheme();
+
+    // chips
+    if (lvlChip) lvlChip.textContent = String(S.lvl);
+    if (sparksChip) sparksChip.textContent = String(Math.floor(S.sparks));
+
+    // xp
+    const need = xpNeed(S.lvl);
+    const xpPct = clamp((S.xp / need) * 100, 0, 100);
+    if (xpBar) xpBar.style.width = xpPct.toFixed(2) + "%";
+    if (xpText) xpText.textContent = `${Math.floor(S.xp)} / ${need}`;
+
+    // energy
+    const ePct = clamp((S.energy / S.energyMax) * 100, 0, 100);
+    if (energyBar) energyBar.style.width = ePct.toFixed(2) + "%";
+    if (energyText) energyText.textContent = `${Math.floor(S.energy)} / ${S.energyMax}`;
+
+    // mood
+    const mPct = clamp(S.mood, 0, 100);
+    if (moodBar) moodBar.style.width = mPct.toFixed(2) + "%";
+    if (moodTextTop) {
+      const emoji = mPct >= 70 ? "😄" : (mPct >= 40 ? "🙂" : (mPct >= 20 ? "😕" : "😵"));
+      moodTextTop.textContent = `${emoji} ${Math.round(mPct)}%`;
+    }
+
+    // buttons state
+    const setDis = (btn, cost) => { if (btn) btn.disabled = !canSpendEnergy(cost); };
+    setDis(btnFeed, 3);
+    setDis(btnPet, 2);
+    setDis(btnPlay, 3);
+
+    // next reward
+    const next = (Math.floor((S.lvl) / 10) + 1) * 10;
+    if (nextReward) nextReward.textContent = `${next} lvl`;
+
+    // skin
+    if (skinText) skinText.textContent = skinNameByLvl(S.lvl);
+    if (flame) flame.style.filter = `drop-shadow(0 0 30px rgba(255,120,40,.28)) ${skinFilterByLvl(S.lvl)}`;
+
+    applyFx();
+    renderSettings();
+  };
+
+  // --- Telegram info line ---
+  if (tgInfo) tgInfo.textContent = tg ? "Открыто в Telegram" : "Открыто в браузере";
+
+  // --- Wire events ---
+  // Navigation
+  document.getElementById("bottomNav")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-go]");
+    if (!btn) return;
+    e.preventDefault();
+    go(btn.dataset.go);
+    if (tg) try { tg.BackButton.hide(); } catch (_) {}
+  });
+
+  // Flame tap: pointerup for mobile reliability
+  if (flame) {
+    flame.addEventListener("pointerup", (e) => { e.preventDefault(); doTap(); });
+    flame.style.touchAction = "manipulation";
+  }
+
+  // Main actions
+  btnFeed?.addEventListener("click", (e) => { e.preventDefault(); action("feed"); });
+  btnPet?.addEventListener("click", (e) => { e.preventDefault(); action("pet"); });
+  btnPlay?.addEventListener("click", (e) => { e.preventDefault(); action("play"); });
+  btnDaily?.addEventListener("click", (e) => { e.preventDefault(); action("daily"); });
+
+  // Settings
+  toggleTheme?.addEventListener("click", (e) => {
+    e.preventDefault();
+    const order = ["auto", "dark", "light"];
+    S.themePref = order[(order.indexOf(S.themePref) + 1) % order.length];
+    applyTheme();
+    renderSettings();
+    save();
+    toast("Тема обновлена");
+    haptic("light");
+  });
+
+  const userGesture = async () => {
+    // if music is enabled, ensure it starts after the first gesture
+    if (S.musicOn) await setMusic(true);
+    document.removeEventListener("pointerdown", userGesture);
+  };
+  document.addEventListener("pointerdown", userGesture, { once: true });
+
+  toggleMusic?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    await setMusic(!S.musicOn);
+    toast(S.musicOn ? "Музыка включена" : "Музыка выключена");
+    haptic("light");
+  });
+
+  musicVolBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    // cycle: 0.2 -> 0.4 -> 0.6 -> 0.8
+    const steps = [0.2, 0.4, 0.6, 0.8];
+    const cur = steps.reduce((best, x) => Math.abs(x - S.musicVol) < Math.abs(best - S.musicVol) ? x : best, steps[0]);
+    const next = steps[(steps.indexOf(cur) + 1) % steps.length];
+    setVol(next);
+    toast(`Громкость: ${Math.round(next * 100)}%`);
+    haptic("light");
+  });
+
+  toggleAutosave?.addEventListener("click", (e) => {
+    e.preventDefault();
+    S.autosaveOn = !S.autosaveOn;
+    renderSettings();
+    save(); // will no-op if autosaveOff; still ok
+    toast(S.autosaveOn ? "Автосейв включён" : "Автосейв выключен");
+    haptic("light");
+  });
+
+  manualSave?.addEventListener("click", (e) => {
+    e.preventDefault();
+    try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (_) {}
+    toast("Сохранено 💾");
+    haptic("light");
+  });
+
+  resetBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    const ok = confirm("Точно сбросить прогресс? Это удалит сохранение.");
+    if (!ok) return;
+    S = structuredClone(DEFAULT);
+    try { localStorage.removeItem(LS_KEY); } catch (_) {}
+    renderShop();
+    render();
+    toast("Сброшено");
+    haptic("heavy");
+  });
+
+  // Periodic regen tick (lightweight)
+  setInterval(() => {
+    applyOfflineRegen();
+    render();
+    save();
+  }, 15000);
+
+  // Initial
+  applyOfflineRegen();
+  renderShop();
+  render();
+  save();
+
+})();
+</script>
+</body>
+</html>
